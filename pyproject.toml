@@ -1,0 +1,6 @@
+[project]
+name = "fx-balance-sheet-tool"
+version = "0.1.0"
+description = "FX balance sheet Monte Carlo tool — generates a standalone HTML simulator"
+requires-python = ">=3.12"
+dependencies = []

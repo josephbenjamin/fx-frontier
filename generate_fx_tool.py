@@ -1,0 +1,1237 @@
+#!/usr/bin/env python3
+"""
+FX Balance Sheet Monte Carlo Tool Generator
+Usage: python generate_fx_tool.py
+Output: fx_balance_sheet_tool.html
+"""
+
+def main():
+    html = generate_html()
+    out = 'fx_balance_sheet_tool.html'
+    with open(out, 'w', encoding='utf-8') as f:
+        f.write(html)
+    print(f"Generated {out}")
+    print(f"Open {out} in Chrome, Firefox, or Safari.")
+
+
+def generate_html():
+    return (
+        '<!DOCTYPE html>\n<html lang="en">\n<head>\n'
+        '<meta charset="UTF-8">\n'
+        '<meta name="viewport" content="width=device-width, initial-scale=1.0">\n'
+        '<title>FX Balance Sheet Monte Carlo</title>\n'
+        '<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>\n'
+        '<style>\n' + get_css() + '\n</style>\n</head>\n<body>\n'
+        + get_body() +
+        '\n<script>\n' + get_js() + '\n</script>\n</body>\n</html>'
+    )
+
+
+def get_css():
+    return """
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --navy: #1a365d; --blue: #2b6cb0; --blue-light: #3182ce; --blue-bg: #ebf8ff;
+  --green: #276749; --amber: #b7791f; --red: #c53030;
+  --gray-50: #f7fafc; --gray-100: #edf2f7; --gray-200: #e2e8f0; --gray-300: #cbd5e0;
+  --gray-500: #718096; --gray-700: #2d3748; --gray-900: #1a202c;
+  --white: #ffffff; --shadow: 0 1px 3px rgba(0,0,0,.12), 0 1px 2px rgba(0,0,0,.08);
+  --shadow-md: 0 4px 6px rgba(0,0,0,.1); --radius: 8px;
+}
+body { font-family: -apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;
+  font-size: 14px; color: var(--gray-700); background: var(--gray-50); }
+
+.app-header { background: var(--navy); color: white; padding: 16px 24px;
+  display: flex; align-items: center; gap: 12px; }
+.app-header h1 { font-size: 18px; font-weight: 600; letter-spacing: -.3px; }
+.app-header .subtitle { font-size: 12px; opacity: .7; margin-top: 2px; }
+
+.tabs-bar { background: white; border-bottom: 2px solid var(--gray-200);
+  display: flex; padding: 0 24px; }
+.tab-btn { padding: 14px 20px; border: none; background: none; cursor: pointer;
+  font-size: 13px; font-weight: 500; color: var(--gray-500); border-bottom: 2px solid transparent;
+  margin-bottom: -2px; transition: all .15s; white-space: nowrap; }
+.tab-btn:hover:not(.disabled) { color: var(--blue); }
+.tab-btn.active { color: var(--blue); border-bottom-color: var(--blue); }
+.tab-btn.disabled { opacity: .4; cursor: not-allowed; }
+.tab-btn .tab-num { display: inline-flex; align-items: center; justify-content: center;
+  width: 20px; height: 20px; border-radius: 50%; background: var(--gray-200);
+  font-size: 11px; margin-right: 7px; font-weight: 700; }
+.tab-btn.active .tab-num { background: var(--blue); color: white; }
+
+.tab-panel { display: none; padding: 24px; max-width: 1200px; margin: 0 auto; }
+.tab-panel.active { display: block; }
+
+.card { background: white; border-radius: var(--radius); box-shadow: var(--shadow);
+  padding: 20px; margin-bottom: 20px; }
+.card h2 { font-size: 15px; font-weight: 600; color: var(--navy); margin-bottom: 16px;
+  padding-bottom: 10px; border-bottom: 1px solid var(--gray-100); }
+.card h3 { font-size: 13px; font-weight: 600; color: var(--gray-700); margin: 14px 0 8px; }
+
+.form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
+.form-group { display: flex; flex-direction: column; gap: 5px; }
+.form-group label { font-size: 12px; font-weight: 500; color: var(--gray-500); text-transform: uppercase; letter-spacing: .4px; }
+.form-group input, .form-group select {
+  padding: 8px 10px; border: 1px solid var(--gray-300); border-radius: 6px;
+  font-size: 14px; color: var(--gray-700); background: white; width: 100%;
+  transition: border-color .15s; }
+.form-group input:focus, .form-group select:focus { outline: none; border-color: var(--blue-light); box-shadow: 0 0 0 3px rgba(49,130,206,.15); }
+.form-group input.error { border-color: var(--red); }
+
+.metrics-bar { display: flex; gap: 16px; flex-wrap: wrap; padding: 12px 16px;
+  background: var(--blue-bg); border-radius: 6px; margin-top: 16px; }
+.metric { display: flex; flex-direction: column; gap: 2px; }
+.metric-label { font-size: 11px; text-transform: uppercase; letter-spacing: .4px; color: var(--blue); font-weight: 600; }
+.metric-value { font-size: 16px; font-weight: 700; color: var(--navy); }
+
+.ccy-checkbox-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.ccy-check { display: flex; align-items: center; gap: 6px; padding: 6px 12px;
+  border: 1px solid var(--gray-200); border-radius: 20px; cursor: pointer;
+  transition: all .15s; font-size: 13px; user-select: none; }
+.ccy-check:hover { border-color: var(--blue-light); background: var(--blue-bg); }
+.ccy-check input[type=checkbox] { cursor: pointer; accent-color: var(--blue); }
+.ccy-check.checked { border-color: var(--blue); background: var(--blue-bg); color: var(--blue); font-weight: 600; }
+
+.alloc-group { margin-bottom: 20px; }
+.alloc-group-title { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .5px;
+  color: var(--gray-500); margin-bottom: 8px; }
+.alloc-row { display: flex; align-items: center; gap: 10px; padding: 6px 0; border-bottom: 1px solid var(--gray-100); }
+.alloc-row:last-child { border-bottom: none; }
+.alloc-ccy { width: 40px; font-size: 12px; font-weight: 700; color: var(--navy); flex-shrink: 0; }
+.alloc-slider { flex: 1; -webkit-appearance: none; height: 6px; border-radius: 3px;
+  background: var(--gray-200); outline: none; cursor: pointer; }
+.alloc-slider::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px;
+  border-radius: 50%; background: var(--blue); cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,.2); }
+.alloc-slider:disabled { opacity: .5; cursor: not-allowed; }
+.alloc-val { width: 52px; text-align: right; font-size: 13px; font-weight: 600; color: var(--gray-700); flex-shrink: 0; }
+.lock-btn { width: 28px; height: 28px; border: 1px solid var(--gray-200); border-radius: 4px;
+  background: white; cursor: pointer; font-size: 13px; display: flex; align-items: center;
+  justify-content: center; flex-shrink: 0; transition: all .15s; }
+.lock-btn:hover { border-color: var(--amber); }
+.lock-btn.locked { background: var(--amber); border-color: var(--amber); color: white; }
+.alloc-total { font-size: 13px; font-weight: 700; padding: 6px 0;
+  color: var(--green); }
+.alloc-total.error { color: var(--red); }
+
+.fx-table { width: 100%; border-collapse: collapse; }
+.fx-table th { text-align: left; padding: 8px 10px; font-size: 11px; text-transform: uppercase;
+  letter-spacing: .4px; color: var(--gray-500); border-bottom: 2px solid var(--gray-200); }
+.fx-table td { padding: 7px 10px; border-bottom: 1px solid var(--gray-100); }
+.fx-table td input { width: 90px; padding: 5px 8px; border: 1px solid var(--gray-200);
+  border-radius: 4px; font-size: 13px; text-align: right; }
+.fx-table td input:focus { outline: none; border-color: var(--blue-light); }
+.fx-table .ccy-label { font-weight: 700; font-size: 13px; color: var(--navy); }
+.fx-table .ccy-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+
+.corr-wrap { overflow-x: auto; }
+.corr-table { border-collapse: collapse; }
+.corr-table th, .corr-table td { padding: 5px 4px; text-align: center; min-width: 64px; }
+.corr-table th { font-size: 11px; font-weight: 600; color: var(--gray-500); }
+.corr-table .corr-diag { background: var(--gray-100); font-weight: 700; color: var(--gray-500); font-size: 12px; }
+.corr-table input { width: 58px; padding: 4px 6px; border: 1px solid var(--gray-200);
+  border-radius: 4px; font-size: 12px; text-align: center; }
+.corr-table input:focus { outline: none; border-color: var(--blue-light); }
+.corr-table input.invalid { background: #fff5f5; border-color: var(--red); }
+#corr-status { font-size: 12px; margin-top: 8px; }
+#corr-status.ok { color: var(--green); }
+#corr-status.warn { color: var(--amber); }
+
+.scenario-meta { display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap; }
+.scenario-count-box { background: var(--gray-50); border: 1px solid var(--gray-200);
+  border-radius: 6px; padding: 12px 16px; min-width: 160px; }
+.scenario-count-box .big-num { font-size: 32px; font-weight: 800; color: var(--navy); }
+.scenario-count-box .label { font-size: 12px; color: var(--gray-500); margin-top: 2px; }
+.warn-box { background: #fffbeb; border: 1px solid #f6e05e; border-radius: 6px;
+  padding: 10px 14px; font-size: 13px; color: var(--amber); max-width: 400px; }
+
+.run-section { display: flex; align-items: center; gap: 20px; padding: 24px 0; }
+.btn { padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer;
+  font-size: 14px; font-weight: 600; transition: all .15s; }
+.btn-primary { background: var(--blue); color: white; }
+.btn-primary:hover:not(:disabled) { background: var(--navy); }
+.btn-primary:disabled { opacity: .5; cursor: not-allowed; }
+.btn-lg { padding: 13px 32px; font-size: 15px; }
+.progress-wrap { display: none; align-items: center; gap: 12px; }
+.progress-bar { width: 300px; height: 8px; background: var(--gray-200); border-radius: 4px; overflow: hidden; }
+.progress-fill { height: 100%; background: var(--blue); border-radius: 4px; transition: width .2s; width: 0%; }
+.progress-label { font-size: 13px; color: var(--gray-500); width: 40px; }
+
+.results-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+@media (max-width: 900px) { .results-grid { grid-template-columns: 1fr; } }
+.chart-wrap { position: relative; height: 380px; }
+
+.overlay-controls { margin-top: 16px; padding: 14px; background: var(--gray-50);
+  border-radius: 6px; border: 1px solid var(--gray-200); }
+.overlay-controls h3 { font-size: 12px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .5px; color: var(--gray-500); margin-bottom: 10px; }
+.quick-btns { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.quick-btn { padding: 4px 10px; font-size: 12px; border: 1px solid var(--gray-300);
+  background: white; border-radius: 4px; cursor: pointer; transition: all .12s; }
+.quick-btn:hover { border-color: var(--blue); color: var(--blue); }
+.quick-btn.active { background: var(--blue); color: white; border-color: var(--blue); }
+
+.frontier-legend { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; font-size: 12px; }
+.legend-item { display: flex; align-items: center; gap: 5px; }
+.legend-dot { width: 12px; height: 12px; border-radius: 50%; border: 1px solid rgba(0,0,0,.15); }
+
+.tooltip-note { font-size: 11px; color: var(--gray-500); margin-top: 6px; }
+.tag { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+.tag-blue { background: var(--blue-bg); color: var(--blue); }
+.tag-green { background: #f0fff4; color: var(--green); }
+"""
+
+
+def get_body():
+    return """
+<div class="app-header">
+  <div>
+    <h1>FX Balance Sheet Monte Carlo</h1>
+    <div class="subtitle">Simulate FX impact on equity and leverage</div>
+  </div>
+</div>
+
+<div class="tabs-bar">
+  <button class="tab-btn active" onclick="switchTab('setup')"><span class="tab-num">1</span>Company Setup</button>
+  <button class="tab-btn" onclick="switchTab('fx')"><span class="tab-num">2</span>FX Parameters</button>
+  <button class="tab-btn" onclick="switchTab('scenarios')"><span class="tab-num">3</span>Scenarios &amp; Run</button>
+  <button class="tab-btn disabled" id="results-tab-btn" onclick="switchTab('results')"><span class="tab-num">4</span>Results</button>
+</div>
+
+<div id="tab-setup" class="tab-panel active">
+  <div class="card">
+    <h2>Company Parameters</h2>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Reporting Currency</label>
+        <select id="reporting-ccy" onchange="onReportingCcyChange()">
+          <option value="USD" selected>USD — US Dollar</option>
+          <option value="EUR">EUR — Euro</option>
+          <option value="GBP">GBP — British Pound</option>
+          <option value="JPY">JPY — Japanese Yen</option>
+          <option value="CHF">CHF — Swiss Franc</option>
+          <option value="AUD">AUD — Australian Dollar</option>
+          <option value="CAD">CAD — Canadian Dollar</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Total Net Debt (<span id="nd-ccy-lbl">USD</span>M)</label>
+        <input type="number" id="net-debt" value="500" min="0" oninput="onParamsChange()">
+      </div>
+      <div class="form-group">
+        <label>Total NAV (<span id="nav-ccy-lbl">USD</span>M)</label>
+        <input type="number" id="nav" value="1200" min="0" oninput="onParamsChange()">
+      </div>
+      <div class="form-group">
+        <label>Total EBITDA (<span id="ebitda-ccy-lbl">USD</span>M)</label>
+        <input type="number" id="ebitda" value="200" min="1" oninput="onParamsChange()">
+      </div>
+    </div>
+    <div class="metrics-bar" id="base-metrics">
+      <div class="metric"><div class="metric-label">Base Equity</div><div class="metric-value" id="base-equity-val">—</div></div>
+      <div class="metric"><div class="metric-label">Base Leverage</div><div class="metric-value" id="base-lev-val">—</div></div>
+      <div class="metric"><div class="metric-label">Equity / NAV</div><div class="metric-value" id="base-ltv-val">—</div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Currency Selection</h2>
+    <p style="font-size:13px;color:var(--gray-500);margin-bottom:12px;">Select foreign currencies. Reporting currency is always included.</p>
+    <div class="ccy-checkbox-grid" id="ccy-checkboxes"></div>
+  </div>
+
+  <div class="card" id="alloc-card" style="display:none">
+    <h2>Currency Allocations</h2>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:24px" id="alloc-groups">
+      <div>
+        <div class="alloc-group-title">% Net Debt</div>
+        <div id="sliders-debt"></div>
+        <div class="alloc-total" id="total-debt">Total: 100%</div>
+      </div>
+      <div>
+        <div class="alloc-group-title">% EBITDA</div>
+        <div id="sliders-ebitda"></div>
+        <div class="alloc-total" id="total-ebitda">Total: 100%</div>
+      </div>
+      <div>
+        <div class="alloc-group-title">% Net Assets</div>
+        <div id="sliders-na"></div>
+        <div class="alloc-total" id="total-na">Total: 100%</div>
+      </div>
+    </div>
+    <p style="font-size:11px;color:var(--gray-500);margin-top:10px;">
+      🔒 Lock a slider to prevent it from auto-adjusting when others move.
+    </p>
+  </div>
+</div>
+
+<div id="tab-fx" class="tab-panel">
+  <div class="card">
+    <h2>FX Market Parameters <span class="tag tag-blue" id="fx-reporting-label">vs USD</span></h2>
+    <p style="font-size:13px;color:var(--gray-500);margin-bottom:14px;">
+      Rates expressed as units of reporting currency per 1 unit of foreign currency (e.g. EUR at 1.08 means 1 EUR = 1.08 USD).
+    </p>
+    <table class="fx-table" id="fx-table">
+      <thead>
+        <tr>
+          <th>Currency</th>
+          <th>Spot Rate</th>
+          <th>1Y Forward</th>
+          <th>Annual Vol (%)</th>
+        </tr>
+      </thead>
+      <tbody id="fx-table-body"></tbody>
+    </table>
+  </div>
+  <div class="card">
+    <h2>Correlation Matrix</h2>
+    <p style="font-size:13px;color:var(--gray-500);margin-bottom:14px;">
+      Correlations between daily FX returns of each currency pair (vs reporting currency). Range: −1 to 1.
+    </p>
+    <div class="corr-wrap"><table class="corr-table" id="corr-table"></table></div>
+    <div id="corr-status" class="ok">✓ Correlation matrix is positive semi-definite</div>
+  </div>
+</div>
+
+<div id="tab-scenarios" class="tab-panel">
+  <div class="card">
+    <h2>Monte Carlo Setup</h2>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Debt Scenario Step Size</label>
+        <select id="step-size" onchange="updateScenarioCount()">
+          <option value="50">50% steps</option>
+          <option value="25">25% steps</option>
+          <option value="20">20% steps</option>
+          <option value="10" selected>10% steps</option>
+          <option value="5">5% steps</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Simulations: <strong id="nsims-label">10,000</strong></label>
+        <input type="range" id="nsims" min="1000" max="50000" step="1000" value="10000"
+          oninput="document.getElementById('nsims-label').textContent=Number(this.value).toLocaleString(); updateScenarioCount()">
+      </div>
+      <div class="form-group">
+        <label>Time Horizon</label>
+        <select id="time-horizon">
+          <option value="0.5">6 months</option>
+          <option value="1" selected>1 year</option>
+          <option value="2">2 years</option>
+        </select>
+      </div>
+    </div>
+    <div class="scenario-meta" style="margin-top:20px">
+      <div class="scenario-count-box">
+        <div class="big-num" id="scenario-count">—</div>
+        <div class="label">debt scenarios</div>
+      </div>
+      <div class="scenario-count-box">
+        <div class="big-num" id="total-sims">—</div>
+        <div class="label">total simulations</div>
+      </div>
+      <div id="scenario-warn" class="warn-box" style="display:none"></div>
+    </div>
+  </div>
+  <div style="padding: 8px 0 24px">
+    <div class="run-section">
+      <button class="btn btn-primary btn-lg" id="run-btn" onclick="runAnalysis()">▶ Run Analysis</button>
+      <div class="progress-wrap" id="progress-wrap">
+        <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+        <div class="progress-label" id="progress-label">0%</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="tab-results" class="tab-panel">
+  <div class="results-grid">
+    <div class="card">
+      <h2>Result A — FX Impact on Equity &amp; Leverage</h2>
+      <p style="font-size:12px;color:var(--gray-500);margin-bottom:10px">
+        <span class="tag tag-blue">Blue</span> Existing debt split &nbsp;
+        <span class="tag" style="background:#fff3cd;color:#856404">Orange</span> Overlay scenario
+      </p>
+      <div class="chart-wrap"><canvas id="chart-a"></canvas></div>
+      <div class="overlay-controls">
+        <h3>Overlay Scenario — Debt Allocation</h3>
+        <div id="overlay-sliders"></div>
+        <div class="quick-btns" id="quick-btns"></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Result B — Efficient Frontier</h2>
+      <p style="font-size:12px;color:var(--gray-500);margin-bottom:10px">
+        99th pctile Leverage vs 1st pctile ΔEquity (worst tails). Colour = dominant debt currency.
+      </p>
+      <div class="chart-wrap"><canvas id="chart-b"></canvas></div>
+      <div class="frontier-legend" id="frontier-legend"></div>
+    </div>
+  </div>
+</div>
+"""
+
+
+def get_js():
+    return r"""
+// ============================================================
+// CONSTANTS
+// ============================================================
+const ALL_CCYS = ['USD','EUR','GBP','JPY','CHF','AUD','CAD'];
+const CCY_NAMES = { USD:'US Dollar', EUR:'Euro', GBP:'British Pound',
+  JPY:'Japanese Yen', CHF:'Swiss Franc', AUD:'Australian Dollar', CAD:'Canadian Dollar' };
+
+// Default FX vs USD: 1 foreign unit = X USD
+const USD_RATES = {
+  EUR:{spot:1.08,fwd:1.08,vol:8}, GBP:{spot:1.27,fwd:1.27,vol:9},
+  JPY:{spot:0.00670,fwd:0.00662,vol:10}, CHF:{spot:1.12,fwd:1.13,vol:8},
+  AUD:{spot:0.650,fwd:0.640,vol:12}, CAD:{spot:0.740,fwd:0.730,vol:8}
+};
+
+// Default correlations (sorted key e.g. 'AUD-EUR')
+const DEFAULT_CORR = {
+  'EUR-GBP':0.60,'EUR-JPY':0.15,'CHF-EUR':0.55,'AUD-EUR':0.25,'CAD-EUR':0.20,
+  'GBP-JPY':0.10,'CHF-GBP':0.45,'AUD-GBP':0.20,'CAD-GBP':0.15,
+  'CHF-JPY':0.30,'AUD-JPY':-0.10,'CAD-JPY':-0.05,
+  'AUD-CHF':0.15,'CAD-CHF':0.10,'AUD-CAD':0.50
+};
+
+const CCY_COLORS = {
+  USD:'#e74c3c', EUR:'#3498db', GBP:'#9b59b6', JPY:'#e67e22',
+  CHF:'#1abc9c', AUD:'#f39c12', CAD:'#2ecc71'
+};
+
+// ============================================================
+// STATE
+// ============================================================
+const S = {
+  reportingCcy: 'USD',
+  netDebt: 500, nav: 1200, ebitda: 200,
+  selectedCcys: ['EUR','GBP','JPY'],
+  debtAlloc: {}, ebitdaAlloc: {}, naAlloc: {},
+  fxParams: {},    // { EUR: {spot,fwd,vol}, ... }  foreign ccys only
+  correlations: {}, // { 'EUR-GBP': 0.6, ... }
+  sliderLocks: {},  // { 'debt_EUR': true, ... }
+  stepSize: 10, nSims: 10000, timeHorizon: 1.0,
+  results: null,
+  fxPaths: null,    // [nSims][nForeign] stored after run
+  naLocal: null, ebitdaLocal: null,
+  naReporting: 0, ebitdaReporting: 0, baseEquity: 0,
+  spotArr: null, scenarios: null, allCcys: null
+};
+
+// ============================================================
+// UTILS
+// ============================================================
+function fmt(n, decimals=1) {
+  if (n === null || n === undefined || isNaN(n)) return '—';
+  return n.toFixed(decimals).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
+function fmtM(n) { return fmt(n,1) + 'M'; }
+function corrKey(a,b) { return [a,b].sort().join('-'); }
+
+function hexToRgb(hex) {
+  const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
+  return {r,g,b};
+}
+function scenarioColor(debtAlloc, allCcys) {
+  const n = allCcys.length;
+  let domCcy = allCcys[0], domPct = 0;
+  allCcys.forEach(c => { if ((debtAlloc[c]||0) > domPct) { domPct = debtAlloc[c]||0; domCcy = c; } });
+  const sat = Math.max(0, (domPct/100 - 1/n) / (1 - 1/n));
+  const base = hexToRgb(CCY_COLORS[domCcy] || '#888888');
+  const r = Math.round(base.r*sat + 255*(1-sat));
+  const g = Math.round(base.g*sat + 255*(1-sat));
+  const b = Math.round(base.b*sat + 255*(1-sat));
+  return `rgb(${r},${g},${b})`;
+}
+
+function getDefaultFxRate(foreignCcy, reportingCcy) {
+  if (reportingCcy === 'USD') return { ...USD_RATES[foreignCcy] };
+  const fUSD = foreignCcy === 'USD' ? {spot:1,fwd:1,vol:0} : USD_RATES[foreignCcy];
+  const rUSD = reportingCcy === 'USD' ? {spot:1,fwd:1,vol:0} : USD_RATES[reportingCcy];
+  if (!fUSD || !rUSD) return {spot:1,fwd:1,vol:10};
+  const corKey = corrKey(foreignCcy, reportingCcy);
+  const crossCorr = DEFAULT_CORR[corKey] || 0;
+  const crossVol = Math.sqrt(fUSD.vol**2 + rUSD.vol**2 - 2*crossCorr*(fUSD.vol/100)*(rUSD.vol/100)*10000) ;
+  return {
+    spot: fUSD.spot / rUSD.spot,
+    fwd:  fUSD.fwd  / rUSD.fwd,
+    vol:  Math.round(crossVol * 10) / 10
+  };
+}
+
+// ============================================================
+// TAB NAVIGATION
+// ============================================================
+function switchTab(name) {
+  if (name === 'results' && !S.results) return;
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  const btns = document.querySelectorAll('.tab-btn');
+  const map = {setup:0, fx:1, scenarios:2, results:3};
+  btns[map[name]].classList.add('active');
+}
+
+// ============================================================
+// TAB 1: COMPANY SETUP
+// ============================================================
+function onReportingCcyChange() {
+  S.reportingCcy = document.getElementById('reporting-ccy').value;
+  ['nd-ccy-lbl','nav-ccy-lbl','ebitda-ccy-lbl'].forEach(id =>
+    document.getElementById(id).textContent = S.reportingCcy);
+  document.getElementById('fx-reporting-label').textContent = 'vs ' + S.reportingCcy;
+  rebuildFxDefaults();
+  renderCcyCheckboxes();
+  onParamsChange();
+}
+
+function onParamsChange() {
+  S.netDebt = parseFloat(document.getElementById('net-debt').value) || 0;
+  S.nav     = parseFloat(document.getElementById('nav').value) || 0;
+  S.ebitda  = parseFloat(document.getElementById('ebitda').value) || 1;
+  const eq  = S.nav - S.netDebt;
+  const lev = S.netDebt / S.ebitda;
+  document.getElementById('base-equity-val').textContent = S.reportingCcy + fmtM(eq);
+  document.getElementById('base-lev-val').textContent = fmt(lev,2) + 'x';
+  document.getElementById('base-ltv-val').textContent = fmt(100*eq/S.nav, 1) + '%';
+}
+
+function renderCcyCheckboxes() {
+  const container = document.getElementById('ccy-checkboxes');
+  container.innerHTML = '';
+  ALL_CCYS.filter(c => c !== S.reportingCcy).forEach(ccy => {
+    const checked = S.selectedCcys.includes(ccy);
+    const lbl = document.createElement('label');
+    lbl.className = 'ccy-check' + (checked ? ' checked' : '');
+    lbl.innerHTML =
+      `<input type="checkbox" ${checked?'checked':''} onchange="onCcyToggle('${ccy}', this.checked)">` +
+      `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${CCY_COLORS[ccy]};margin-right:4px"></span>` +
+      `${ccy}`;
+    container.appendChild(lbl);
+  });
+}
+
+function onCcyToggle(ccy, checked) {
+  if (checked) {
+    if (!S.selectedCcys.includes(ccy)) S.selectedCcys.push(ccy);
+  } else {
+    S.selectedCcys = S.selectedCcys.filter(c => c !== ccy);
+  }
+  // Update checkbox styling
+  document.querySelectorAll('.ccy-check').forEach(lbl => {
+    const cb = lbl.querySelector('input');
+    lbl.classList.toggle('checked', cb.checked);
+  });
+  initAllocations();
+  rebuildFxDefaults();
+  renderFxTable();
+  renderCorrMatrix();
+  renderSliders();
+  updateScenarioCount();
+  const show = S.selectedCcys.length > 0;
+  document.getElementById('alloc-card').style.display = show ? '' : 'none';
+}
+
+function getAllCcys() { return [S.reportingCcy, ...S.selectedCcys]; }
+
+function initAllocations() {
+  const allCcys = getAllCcys();
+  const n = allCcys.length;
+  ['debt','ebitda','na'].forEach(grp => {
+    const existing = S[grp+'Alloc'];
+    const newAlloc = {};
+    const step = 100 / n;
+    allCcys.forEach((c, i) => {
+      newAlloc[c] = existing[c] !== undefined ? existing[c] : step;
+    });
+    // Normalize to 100
+    const total = Object.values(newAlloc).reduce((a,b)=>a+b,0);
+    if (total > 0) allCcys.forEach(c => newAlloc[c] = newAlloc[c] / total * 100);
+    S[grp+'Alloc'] = newAlloc;
+  });
+}
+
+function renderSliders() {
+  const allCcys = getAllCcys();
+  ['debt','ebitda','na'].forEach(grp => {
+    const container = document.getElementById('sliders-' + grp);
+    if (!container) return;
+    container.innerHTML = '';
+    allCcys.forEach(ccy => {
+      const val = S[grp+'Alloc'][ccy] || 0;
+      const locked = !!S.sliderLocks[grp+'_'+ccy];
+      const row = document.createElement('div');
+      row.className = 'alloc-row';
+      row.innerHTML =
+        `<div class="alloc-ccy" style="color:${CCY_COLORS[ccy]||'#333'}">${ccy}</div>` +
+        `<input type="range" class="alloc-slider" id="sl_${grp}_${ccy}" min="0" max="100" step="0.1" value="${val.toFixed(1)}"` +
+        ` oninput="onSliderMove('${grp}','${ccy}',parseFloat(this.value))" ${locked?'disabled':''}>` +
+        `<div class="alloc-val" id="sv_${grp}_${ccy}">${val.toFixed(1)}%</div>` +
+        `<button class="lock-btn ${locked?'locked':''}" id="lb_${grp}_${ccy}" onclick="toggleLock('${grp}','${ccy}')" title="${locked?'Unlock':'Lock'}">` +
+        `${locked?'🔒':'🔓'}</button>`;
+      container.appendChild(row);
+    });
+    updateAllocTotal(grp);
+  });
+}
+
+function onSliderMove(grp, changedCcy, newVal) {
+  const allCcys = getAllCcys();
+  const lockedCcys = allCcys.filter(c => c !== changedCcy && S.sliderLocks[grp+'_'+c]);
+  const unlockedCcys = allCcys.filter(c => c !== changedCcy && !S.sliderLocks[grp+'_'+c]);
+  const lockedSum = lockedCcys.reduce((s,c) => s + (S[grp+'Alloc'][c]||0), 0);
+  const available = 100 - lockedSum;
+  newVal = Math.min(newVal, available);
+  S[grp+'Alloc'][changedCcy] = newVal;
+  const remainder = available - newVal;
+  const curUnlockedSum = unlockedCcys.reduce((s,c) => s + (S[grp+'Alloc'][c]||0), 0);
+  if (unlockedCcys.length > 0) {
+    unlockedCcys.forEach(c => {
+      S[grp+'Alloc'][c] = curUnlockedSum > 0
+        ? (S[grp+'Alloc'][c] / curUnlockedSum) * remainder
+        : remainder / unlockedCcys.length;
+    });
+  }
+  updateSliderDisplays(grp);
+}
+
+function updateSliderDisplays(grp) {
+  const allCcys = getAllCcys();
+  allCcys.forEach(c => {
+    const v = S[grp+'Alloc'][c] || 0;
+    const sl = document.getElementById('sl_'+grp+'_'+c);
+    const sv = document.getElementById('sv_'+grp+'_'+c);
+    if (sl && !S.sliderLocks[grp+'_'+c]) sl.value = v.toFixed(1);
+    if (sv) sv.textContent = v.toFixed(1) + '%';
+  });
+  updateAllocTotal(grp);
+}
+
+function updateAllocTotal(grp) {
+  const total = Object.values(S[grp+'Alloc']).reduce((a,b)=>a+b,0);
+  const el = document.getElementById('total-'+grp);
+  if (!el) return;
+  el.textContent = 'Total: ' + total.toFixed(1) + '%';
+  el.className = 'alloc-total' + (Math.abs(total-100) > 0.5 ? ' error' : '');
+}
+
+function toggleLock(grp, ccy) {
+  const key = grp+'_'+ccy;
+  S.sliderLocks[key] = !S.sliderLocks[key];
+  renderSliders();
+}
+
+// ============================================================
+// TAB 2: FX PARAMETERS
+// ============================================================
+function rebuildFxDefaults() {
+  S.fxParams = {};
+  const foreignCcys = S.reportingCcy === 'USD'
+    ? S.selectedCcys
+    : [...S.selectedCcys.filter(c=>c!=='USD'), ...(S.selectedCcys.includes('USD')?['USD']:[])];
+
+  // Include all selected + USD if reporting is not USD
+  const allForeign = S.selectedCcys;
+  allForeign.forEach(ccy => {
+    if (!S.fxParams[ccy]) S.fxParams[ccy] = getDefaultFxRate(ccy, S.reportingCcy);
+  });
+
+  // Default correlations
+  S.correlations = {};
+  allForeign.forEach((a,i) => allForeign.forEach((b,j) => {
+    if (i < j) S.correlations[corrKey(a,b)] = DEFAULT_CORR[corrKey(a,b)] || 0;
+  }));
+}
+
+function renderFxTable() {
+  const tbody = document.getElementById('fx-table-body');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+  S.selectedCcys.forEach(ccy => {
+    const p = S.fxParams[ccy] || getDefaultFxRate(ccy, S.reportingCcy);
+    S.fxParams[ccy] = p;
+    const dot = `<span class="ccy-dot" style="background:${CCY_COLORS[ccy]}"></span>`;
+    const row = document.createElement('tr');
+    row.innerHTML =
+      `<td class="ccy-label">${dot}${ccy}</td>` +
+      `<td><input type="number" id="fx_spot_${ccy}" value="${p.spot}" step="0.0001" min="0.0001" oninput="onFxChange('${ccy}')"></td>` +
+      `<td><input type="number" id="fx_fwd_${ccy}"  value="${p.fwd}"  step="0.0001" min="0.0001" oninput="onFxChange('${ccy}')"></td>` +
+      `<td><input type="number" id="fx_vol_${ccy}"  value="${p.vol}"  step="0.1"    min="0.1"    oninput="onFxChange('${ccy}')"></td>`;
+    tbody.appendChild(row);
+  });
+}
+
+function onFxChange(ccy) {
+  S.fxParams[ccy] = {
+    spot: parseFloat(document.getElementById('fx_spot_'+ccy).value) || 1,
+    fwd:  parseFloat(document.getElementById('fx_fwd_'+ccy).value) || 1,
+    vol:  parseFloat(document.getElementById('fx_vol_'+ccy).value) || 10
+  };
+}
+
+function renderCorrMatrix() {
+  const ccys = S.selectedCcys;
+  const n = ccys.length;
+  const tbl = document.getElementById('corr-table');
+  if (!tbl) return;
+  let html = '<tr><th></th>' + ccys.map(c=>`<th>${c}</th>`).join('') + '</tr>';
+  ccys.forEach((r,i) => {
+    html += '<tr><th>' + r + '</th>';
+    ccys.forEach((c,j) => {
+      if (i === j) {
+        html += '<td class="corr-diag">1.000</td>';
+      } else if (i < j) {
+        const k = corrKey(r,c);
+        const v = S.correlations[k] !== undefined ? S.correlations[k] : 0;
+        html += `<td><input type="number" id="corr_${r}_${c}" value="${v.toFixed(3)}" min="-1" max="1" step="0.01" oninput="onCorrChange('${r}','${c}')"></td>`;
+      } else {
+        html += `<td><input type="number" id="corr_${r}_${c}" value="${(S.correlations[corrKey(r,c)]||0).toFixed(3)}" min="-1" max="1" step="0.01" oninput="onCorrChange('${c}','${r}')"></td>`;
+      }
+    });
+    html += '</tr>';
+  });
+  tbl.innerHTML = html;
+  validateCorrMatrix();
+}
+
+function onCorrChange(a, b) {
+  const k = corrKey(a,b);
+  const v = parseFloat(document.getElementById('corr_'+a+'_'+b).value);
+  if (!isNaN(v)) {
+    S.correlations[k] = Math.max(-1, Math.min(1, v));
+    // Mirror
+    const mir = document.getElementById('corr_'+b+'_'+a);
+    if (mir) mir.value = S.correlations[k].toFixed(3);
+  }
+  validateCorrMatrix();
+}
+
+function buildCorrMatrix() {
+  const ccys = S.selectedCcys;
+  return ccys.map(r => ccys.map(c => r===c ? 1 : (S.correlations[corrKey(r,c)]||0)));
+}
+
+function cholesky(M) {
+  const n = M.length;
+  const L = Array.from({length:n}, () => new Array(n).fill(0));
+  for (let i=0;i<n;i++) {
+    for (let j=0;j<=i;j++) {
+      let sum=0;
+      for (let k=0;k<j;k++) sum += L[i][k]*L[j][k];
+      if (i===j) { const v=M[i][i]-sum; if(v<-1e-8) return null; L[i][j]=Math.sqrt(Math.max(0,v)); }
+      else L[i][j] = L[j][j]>1e-10 ? (M[i][j]-sum)/L[j][j] : 0;
+    }
+  }
+  return L;
+}
+
+function validateCorrMatrix() {
+  const M = buildCorrMatrix();
+  const L = cholesky(M);
+  const el = document.getElementById('corr-status');
+  if (!el) return;
+  if (L) { el.className='ok'; el.textContent='✓ Correlation matrix is positive semi-definite'; }
+  else   { el.className='warn'; el.textContent='⚠ Matrix is not positive semi-definite — check correlations'; }
+}
+
+// ============================================================
+// TAB 3: SCENARIO COUNT
+// ============================================================
+function countCombinations(n, steps) {
+  // Stars and bars: C(steps + n - 1, n - 1)
+  if (n<=0) return 0;
+  let num=1, den=1;
+  for (let i=0;i<n-1;i++) { num*=(steps+n-1-i); den*=(i+1); }
+  return Math.round(num/den);
+}
+
+function generateScenarios(allCcys, stepPct) {
+  const n = allCcys.length;
+  const steps = Math.round(100/stepPct);
+  const results = [];
+  function recurse(remaining, idx, current) {
+    if (idx === n-1) { results.push([...current, remaining]); return; }
+    for (let i=0;i<=remaining;i++) recurse(remaining-i, idx+1, [...current,i]);
+  }
+  recurse(steps, 0, []);
+  return results.map(arr => {
+    const alloc = {};
+    allCcys.forEach((c,i) => alloc[c] = arr[i]*stepPct);
+    return alloc;
+  });
+}
+
+function updateScenarioCount() {
+  S.stepSize  = parseInt(document.getElementById('step-size').value);
+  S.nSims     = parseInt(document.getElementById('nsims').value);
+  S.timeHorizon = parseFloat(document.getElementById('time-horizon').value);
+  const n = getAllCcys().length;
+  if (n < 2) { document.getElementById('scenario-count').textContent='—'; return; }
+  const cnt = countCombinations(n, Math.round(100/S.stepSize));
+  const total = cnt * S.nSims;
+  document.getElementById('scenario-count').textContent = cnt.toLocaleString();
+  document.getElementById('total-sims').textContent = (total/1e6).toFixed(2)+'M';
+  const warn = document.getElementById('scenario-warn');
+  if (total > 20e6) {
+    warn.style.display='';
+    warn.textContent = `⚠ ${(total/1e6).toFixed(1)}M ops may be slow. Consider increasing step size or reducing simulations.`;
+  } else { warn.style.display='none'; }
+}
+
+// ============================================================
+// WEB WORKER (Blob URL)
+// ============================================================
+const WORKER_SRC = `
+function boxMuller() {
+  let u,v;
+  do{u=Math.random();}while(u===0);
+  do{v=Math.random();}while(v===0);
+  return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);
+}
+function cholesky(M) {
+  const n=M.length;
+  const L=Array.from({length:n},()=>new Array(n).fill(0));
+  for(let i=0;i<n;i++){
+    for(let j=0;j<=i;j++){
+      let s=0;
+      for(let k=0;k<j;k++) s+=L[i][k]*L[j][k];
+      if(i===j){const v=M[i][i]-s;L[i][j]=v>0?Math.sqrt(v):0;}
+      else L[i][j]=L[j][j]>1e-10?(M[i][j]-s)/L[j][j]:0;
+    }
+  }
+  return L;
+}
+function pctile(arr,p){
+  const s=[...arr].sort((a,b)=>a-b);
+  const idx=(p/100)*(s.length-1);
+  const lo=Math.floor(idx),hi=Math.ceil(idx);
+  return lo===hi?s[lo]:s[lo]+(idx-lo)*(s[hi]-s[lo]);
+}
+self.onmessage=function(e){
+  const {corrMatrix,foreignCcys,reportingCcy,fwdArr,volArr,spotArr,
+         navTotal,netDebtTotal,ebitdaTotal,naAlloc,ebitdaAlloc,
+         scenarios,nSims,T}=e.data;
+  const nF=foreignCcys.length;
+  const L=cholesky(corrMatrix);
+  // Simulate FX paths
+  const paths=[];
+  for(let s=0;s<nSims;s++){
+    const eps=Array.from({length:nF},boxMuller);
+    const Z=new Array(nF).fill(0);
+    for(let i=0;i<nF;i++) for(let j=0;j<=i;j++) Z[i]+=L[i][j]*eps[j];
+    paths.push(foreignCcys.map((_,i)=>fwdArr[i]*Math.exp(-0.5*volArr[i]*volArr[i]*T+volArr[i]*Math.sqrt(T)*Z[i])));
+  }
+  // Fixed local values (reporting ccy component unchanged)
+  const naLocal    =foreignCcys.map((_,i)=>navTotal*(naAlloc[foreignCcys[i]]||0)/100/spotArr[i]);
+  const ebitdaLocal=foreignCcys.map((_,i)=>ebitdaTotal*(ebitdaAlloc[foreignCcys[i]]||0)/100/spotArr[i]);
+  const naRep    =navTotal*(naAlloc[reportingCcy]||0)/100;
+  const ebitdaRep=ebitdaTotal*(ebitdaAlloc[reportingCcy]||0)/100;
+  const baseEq   =navTotal-netDebtTotal;
+  const scResults=[];
+  for(let sc=0;sc<scenarios.length;sc++){
+    const da=scenarios[sc];
+    const debtLocal=foreignCcys.map((_,i)=>netDebtTotal*(da[foreignCcys[i]]||0)/100/spotArr[i]);
+    const debtRep  =netDebtTotal*(da[reportingCcy]||0)/100;
+    const dEs=[],levs=[];
+    for(let s=0;s<nSims;s++){
+      let na=naRep,eb=ebitdaRep,dt=debtRep;
+      for(let i=0;i<nF;i++){na+=naLocal[i]*paths[s][i];eb+=ebitdaLocal[i]*paths[s][i];dt+=debtLocal[i]*paths[s][i];}
+      dEs.push(na-dt-baseEq);
+      levs.push(eb>0?dt/eb:99);
+    }
+    const res={debtAlloc:da,p1DeltaEquity:pctile(dEs,1),p99Leverage:pctile(levs,99),
+      p50DeltaEquity:pctile(dEs,50),p50Leverage:pctile(levs,50)};
+    if(sc===0) res.scatterDE=dEs, res.scatterLev=levs;
+    scResults.push(res);
+    if(sc%Math.max(1,Math.floor(scenarios.length/40))===0)
+      self.postMessage({type:'progress',value:Math.round(sc/scenarios.length*100)});
+  }
+  self.postMessage({type:'done',results:scResults,
+    paths:paths,naLocal:naLocal,ebitdaLocal:ebitdaLocal,
+    naRep:naRep,ebitdaRep:ebitdaRep,baseEq:baseEq,spotArr:spotArr});
+};
+`;
+
+// ============================================================
+// RUN ANALYSIS
+// ============================================================
+let chartA = null, chartB = null;
+
+function runAnalysis() {
+  if (S.selectedCcys.length === 0) { alert('Please select at least one foreign currency.'); return; }
+  const M = buildCorrMatrix();
+  if (!cholesky(M)) { alert('Correlation matrix is not valid. Please fix before running.'); return; }
+
+  S.stepSize    = parseInt(document.getElementById('step-size').value);
+  S.nSims       = parseInt(document.getElementById('nsims').value);
+  S.timeHorizon = parseFloat(document.getElementById('time-horizon').value);
+
+  const allCcys     = getAllCcys();
+  const foreignCcys = S.selectedCcys;
+  const fwdArr  = foreignCcys.map(c => S.fxParams[c].fwd);
+  const volArr  = foreignCcys.map(c => S.fxParams[c].vol / 100);
+  const spotArr = foreignCcys.map(c => S.fxParams[c].spot);
+
+  // Build scenarios: existing split first, then grid, then 100% each
+  const gridScenarios = generateScenarios(allCcys, S.stepSize);
+
+  // Find or prepend existing split
+  const existingAlloc = { ...S.debtAlloc };
+  let baseIdx = gridScenarios.findIndex(sc =>
+    allCcys.every(c => Math.abs((sc[c]||0) - (existingAlloc[c]||0)) < 0.5)
+  );
+  let scenarios;
+  if (baseIdx >= 0) {
+    scenarios = [gridScenarios[baseIdx], ...gridScenarios.filter((_,i)=>i!==baseIdx)];
+  } else {
+    scenarios = [existingAlloc, ...gridScenarios];
+  }
+
+  // Add 100% each currency if not already in grid
+  allCcys.forEach(ccy => {
+    const single = {};
+    allCcys.forEach(c => single[c] = c===ccy?100:0);
+    if (!scenarios.find(sc => allCcys.every(c=>Math.abs((sc[c]||0)-(single[c]||0))<0.5)))
+      scenarios.push(single);
+  });
+
+  // Store for later use
+  S.scenarios  = scenarios;
+  S.allCcys    = allCcys;
+  S.spotArr    = spotArr;
+
+  // UI: show progress
+  document.getElementById('run-btn').disabled = true;
+  const pw = document.getElementById('progress-wrap');
+  pw.style.display = 'flex';
+  document.getElementById('progress-fill').style.width = '0%';
+  document.getElementById('progress-label').textContent = '0%';
+
+  const blob = new Blob([WORKER_SRC], {type:'application/javascript'});
+  const url  = URL.createObjectURL(blob);
+  const worker = new Worker(url);
+
+  worker.postMessage({
+    corrMatrix: M, foreignCcys, reportingCcy: S.reportingCcy,
+    fwdArr, volArr, spotArr,
+    navTotal: S.nav, netDebtTotal: S.netDebt, ebitdaTotal: S.ebitda,
+    naAlloc: S.naAlloc, ebitdaAlloc: S.ebitdaAlloc,
+    scenarios, nSims: S.nSims, T: S.timeHorizon
+  });
+
+  worker.onmessage = function(e) {
+    if (e.data.type === 'progress') {
+      const pct = e.data.value + '%';
+      document.getElementById('progress-fill').style.width = pct;
+      document.getElementById('progress-label').textContent = pct;
+    } else if (e.data.type === 'done') {
+      URL.revokeObjectURL(url);
+      document.getElementById('run-btn').disabled = false;
+      pw.style.display = 'none';
+      S.results    = e.data.results;
+      S.fxPaths    = e.data.paths;
+      S.naLocal    = e.data.naLocal;
+      S.ebitdaLocal= e.data.ebitdaLocal;
+      S.naReporting= e.data.naRep;
+      S.ebitdaReporting = e.data.ebitdaRep;
+      S.baseEquity = e.data.baseEq;
+      document.getElementById('results-tab-btn').classList.remove('disabled');
+      renderResults();
+      switchTab('results');
+    }
+  };
+}
+
+// ============================================================
+// RESULTS
+// ============================================================
+function renderResults() {
+  renderChartA(0);
+  renderChartB();
+  renderOverlayControls();
+}
+
+// ---------- Chart A ----------
+function computeScatterForAlloc(debtAllocRaw) {
+  const foreignCcys = S.selectedCcys;
+  const debtRep = S.netDebt * (debtAllocRaw[S.reportingCcy]||0) / 100;
+  const debtLocal = foreignCcys.map((c,i) => S.netDebt * (debtAllocRaw[c]||0) / 100 / S.spotArr[i]);
+  return S.fxPaths.map(fxRates => {
+    let na=S.naReporting, eb=S.ebitdaReporting, dt=debtRep;
+    for (let i=0;i<foreignCcys.length;i++) {
+      na += S.naLocal[i]*fxRates[i];
+      eb += S.ebitdaLocal[i]*fxRates[i];
+      dt += debtLocal[i]*fxRates[i];
+    }
+    return {x: na-dt-S.baseEquity, y: eb>0 ? dt/eb : 99};
+  });
+}
+
+function renderChartA(overlayScIdx) {
+  const base = S.results[0];
+  const baseData = base.scatterDE.map((de,i)=>({x:de, y:base.scatterLev[i]}));
+
+  let overlayData = null;
+  if (overlayScIdx !== 0 || !S.results[overlayScIdx]) {
+    const overlayAlloc = S.scenarios[overlayScIdx];
+    overlayData = computeScatterForAlloc(overlayAlloc);
+  }
+
+  const canvas = document.getElementById('chart-a');
+  if (chartA) chartA.destroy();
+
+  const baseEq = S.baseEquity;
+  const baseLev = S.netDebt / S.ebitda;
+
+  const datasets = [
+    {
+      label: 'Existing Debt Split',
+      data: baseData,
+      backgroundColor: 'rgba(49,130,206,0.25)',
+      pointRadius: 2, pointHoverRadius: 4
+    }
+  ];
+  if (overlayData) {
+    datasets.push({
+      label: 'Overlay Scenario',
+      data: overlayData,
+      backgroundColor: 'rgba(221,107,32,0.3)',
+      pointRadius: 2, pointHoverRadius: 4
+    });
+  }
+
+  chartA = new Chart(canvas, {
+    type: 'scatter',
+    data: { datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'top', labels: { boxWidth: 12, font: { size: 11 } } },
+        tooltip: { callbacks: {
+          label: ctx => `ΔEq: ${fmt(ctx.parsed.x,1)}M  Lev: ${fmt(ctx.parsed.y,2)}x`
+        }}
+      },
+      scales: {
+        x: { title: { display:true, text:`ΔEquity (${S.reportingCcy}M)`, font:{size:11} },
+          grid: { color:'rgba(0,0,0,.05)' } },
+        y: { title: { display:true, text:'Leverage Ratio (x)', font:{size:11} },
+          grid: { color:'rgba(0,0,0,.05)' } }
+      },
+      animation: { duration: 0 }
+    },
+    plugins: [{
+      id:'reflines',
+      afterDraw(chart) {
+        const {ctx,chartArea:{left,right,top,bottom},scales:{x,y}} = chart;
+        ctx.save();
+        ctx.strokeStyle='rgba(0,0,0,0.25)'; ctx.lineWidth=1; ctx.setLineDash([4,3]);
+        // Vertical at x=0
+        const x0 = x.getPixelForValue(0);
+        if (x0>=left && x0<=right) { ctx.beginPath(); ctx.moveTo(x0,top); ctx.lineTo(x0,bottom); ctx.stroke(); }
+        // Horizontal at base leverage
+        const y0 = y.getPixelForValue(baseLev);
+        if (y0>=top && y0<=bottom) { ctx.beginPath(); ctx.moveTo(left,y0); ctx.lineTo(right,y0); ctx.stroke(); }
+        ctx.restore();
+      }
+    }]
+  });
+}
+
+// ---------- Overlay controls ----------
+function renderOverlayControls() {
+  const allCcys = S.allCcys;
+  const container = document.getElementById('overlay-sliders');
+  const existingAlloc = S.scenarios[0];
+  container.innerHTML = '';
+  allCcys.forEach(ccy => {
+    const val = existingAlloc[ccy]||0;
+    const row = document.createElement('div');
+    row.className = 'alloc-row';
+    row.innerHTML =
+      `<div class="alloc-ccy" style="color:${CCY_COLORS[ccy]||'#333'}">${ccy}</div>` +
+      `<input type="range" class="alloc-slider" id="ov_${ccy}" min="0" max="100" step="${S.stepSize}" value="${val}" oninput="onOverlaySlider()">` +
+      `<div class="alloc-val" id="ovv_${ccy}">${val.toFixed(0)}%</div>`;
+    container.appendChild(row);
+  });
+
+  // Quick buttons
+  const qb = document.getElementById('quick-btns');
+  qb.innerHTML = '<button class="quick-btn active" onclick="setOverlayToExisting(this)">Existing</button>';
+  allCcys.forEach(ccy => {
+    qb.innerHTML += `<button class="quick-btn" onclick="setOverlayTo100('${ccy}',this)">100% ${ccy}</button>`;
+  });
+}
+
+function onOverlaySlider() {
+  const allCcys = S.allCcys;
+  const raw = {};
+  let total = 0;
+  allCcys.forEach(c => { raw[c] = parseFloat(document.getElementById('ov_'+c).value)||0; total+=raw[c]; });
+  // Snap to nearest scenario
+  const nearest = findNearestScenario(raw);
+  allCcys.forEach(c => {
+    document.getElementById('ov_'+c).value = nearest[c]||0;
+    document.getElementById('ovv_'+c).textContent = (nearest[c]||0).toFixed(0)+'%';
+  });
+  const idx = S.scenarios.indexOf(nearest);
+  renderChartA(idx >= 0 ? idx : 0);
+  document.querySelectorAll('.quick-btn').forEach(b=>b.classList.remove('active'));
+}
+
+function findNearestScenario(targetAlloc) {
+  const allCcys = S.allCcys;
+  let best = S.scenarios[0], bestDist = Infinity;
+  S.scenarios.forEach(sc => {
+    const d = allCcys.reduce((s,c)=>s+Math.abs((sc[c]||0)-(targetAlloc[c]||0)),0);
+    if (d < bestDist) { bestDist=d; best=sc; }
+  });
+  return best;
+}
+
+function setOverlayToExisting(btn) {
+  const sc = S.scenarios[0];
+  S.allCcys.forEach(c => {
+    const sl = document.getElementById('ov_'+c);
+    if(sl) sl.value = sc[c]||0;
+    const vl = document.getElementById('ovv_'+c);
+    if(vl) vl.textContent = (sc[c]||0).toFixed(0)+'%';
+  });
+  renderChartA(0);
+  document.querySelectorAll('.quick-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+function setOverlayTo100(ccy, btn) {
+  const allCcys = S.allCcys;
+  const target = {};
+  allCcys.forEach(c => target[c] = c===ccy?100:0);
+  allCcys.forEach(c => {
+    const sl = document.getElementById('ov_'+c);
+    if(sl) sl.value = target[c];
+    const vl = document.getElementById('ovv_'+c);
+    if(vl) vl.textContent = target[c].toFixed(0)+'%';
+  });
+  const sc = findNearestScenario(target);
+  const idx = S.scenarios.indexOf(sc);
+  renderChartA(idx>=0?idx:0);
+  document.querySelectorAll('.quick-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+// ---------- Chart B ----------
+function renderChartB() {
+  const allCcys = S.allCcys;
+  const n = allCcys.length;
+
+  // Build regular points
+  const regularPts = [], specialPts = [], specialLabels = [];
+
+  S.results.forEach((r, idx) => {
+    const isBase   = idx === 0;
+    const isSingle = allCcys.some(c =>
+      (r.debtAlloc[c]||0) >= 99.5 && allCcys.filter(x=>x!==c).every(x=>(r.debtAlloc[x]||0)<0.5)
+    );
+    const pt = { x: r.p1DeltaEquity, y: r.p99Leverage, alloc: r.debtAlloc };
+    if (isBase) {
+      specialPts.push({ ...pt, label: 'Existing', color:'#1a365d', shape:'star' });
+    } else if (isSingle) {
+      const domCcy = allCcys.find(c=>(r.debtAlloc[c]||0)>=99.5);
+      specialPts.push({ ...pt, label:`100% ${domCcy}`, color: CCY_COLORS[domCcy]||'#888', shape:'triangle' });
+    } else {
+      regularPts.push({ ...pt, color: scenarioColor(r.debtAlloc, allCcys) });
+    }
+  });
+
+  const canvas = document.getElementById('chart-b');
+  if (chartB) chartB.destroy();
+
+  chartB = new Chart(canvas, {
+    type: 'scatter',
+    data: {
+      datasets: [
+        {
+          label: 'Debt scenarios',
+          data: regularPts.map(p=>({x:p.x,y:p.y})),
+          backgroundColor: regularPts.map(p=>p.color),
+          pointRadius: 6, pointHoverRadius: 8,
+          borderColor: regularPts.map(p=>p.color.replace('rgb','rgba').replace(')',',0.8)')),
+          borderWidth: 1
+        },
+        {
+          label: 'Special',
+          data: specialPts.map(p=>({x:p.x,y:p.y})),
+          backgroundColor: specialPts.map(p=>p.color),
+          pointStyle: specialPts.map(p=>p.shape==='star'?'star':'triangle'),
+          pointRadius: specialPts.map(p=>p.shape==='star'?12:9),
+          pointHoverRadius: 14, borderWidth: 2,
+          borderColor: '#333'
+        }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: {
+          label: (ctx) => {
+            const pts = ctx.datasetIndex===0 ? regularPts : specialPts;
+            const p = pts[ctx.dataIndex];
+            if (!p) return '';
+            const allocStr = allCcys.map(c=>`${c}:${(p.alloc[c]||0).toFixed(0)}%`).join(' ');
+            const lbl = p.label ? `[${p.label}] ` : '';
+            return [
+              `${lbl}${allocStr}`,
+              `ΔEq P1: ${fmt(p.x,1)}M  Lev P99: ${fmt(p.y,2)}x`
+            ];
+          }
+        }}
+      },
+      scales: {
+        x: { title:{display:true,text:`1st Pctile ΔEquity (${S.reportingCcy}M)`,font:{size:11}},
+          grid:{color:'rgba(0,0,0,.05)'} },
+        y: { title:{display:true,text:'99th Pctile Leverage (x)',font:{size:11}},
+          grid:{color:'rgba(0,0,0,.05)'} }
+      },
+      animation: { duration: 0 }
+    }
+  });
+
+  // Legend
+  const leg = document.getElementById('frontier-legend');
+  leg.innerHTML = allCcys.map(c =>
+    `<div class="legend-item"><div class="legend-dot" style="background:${CCY_COLORS[c]}"></div>${c}</div>`
+  ).join('') +
+  '<div class="legend-item"><span style="font-size:16px">★</span>&nbsp;Existing split</div>' +
+  '<div class="legend-item"><span style="font-size:12px">▲</span>&nbsp;100% single currency</div>';
+}
+
+// ============================================================
+// INITIALISE
+// ============================================================
+function init() {
+  renderCcyCheckboxes();
+  onParamsChange();
+  initAllocations();
+
+  // Set default allocations matching the example
+  S.debtAlloc   = { USD:50, EUR:30, GBP:20 };
+  S.ebitdaAlloc = { USD:40, EUR:35, GBP:25 };
+  S.naAlloc     = { USD:35, EUR:40, GBP:25 };
+
+  rebuildFxDefaults();
+  renderSliders();
+  renderFxTable();
+  renderCorrMatrix();
+  updateScenarioCount();
+
+  document.getElementById('alloc-card').style.display = '';
+  document.getElementById('fx-reporting-label').textContent = 'vs ' + S.reportingCcy;
+}
+
+window.addEventListener('DOMContentLoaded', init);
+"""
+
+
+if __name__ == '__main__':
+    main()
