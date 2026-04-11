@@ -5,5 +5,3 @@ __pycache__/
 dist/
 *.egg-info/
 
-# Generated output
-fx_balance_sheet_tool.html

@@ -7,7 +7,7 @@ Output: fx_balance_sheet_tool.html
 
 def main():
     html = generate_html()
-    out = 'fx_balance_sheet_tool.html'
+    out = 'fx-frontier.html'
     with open(out, 'w', encoding='utf-8') as f:
         f.write(html)
     print(f"Generated {out}")
@@ -186,6 +186,18 @@ body { font-family: -apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,
 .tag { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
 .tag-blue { background: var(--blue-bg); color: var(--blue); }
 .tag-green { background: #f0fff4; color: var(--green); }
+.charts-2col { display: grid; grid-template-columns: 1fr 1.2fr; gap: 20px; }
+@media (max-width: 900px) { .charts-2col { grid-template-columns: 1fr; } }
+.risk-stats-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 20px; }
+.risk-block { background: var(--gray-50); border: 1px solid var(--gray-200); border-radius: 6px; padding: 14px 16px; flex: 1; min-width: 160px; }
+.risk-block-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .5px; color: var(--gray-500); margin-bottom: 8px; }
+.risk-row { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; border-bottom: 1px solid var(--gray-100); }
+.risk-row:last-child { border-bottom: none; }
+.risk-label { font-size: 12px; color: var(--gray-500); }
+.risk-val { font-size: 14px; font-weight: 700; color: var(--navy); }
+.risk-arrow { font-size: 11px; font-weight: 700; margin-left: 6px; }
+.risk-arrow.better { color: var(--green); }
+.risk-arrow.worse { color: var(--red); }
 """
 
 
@@ -387,53 +399,19 @@ def get_body():
 </div>
 
 <div id="tab-results" class="tab-panel">
-  <div class="results-grid">
-    <div class="card">
-      <h2>Result A — FX Impact on Equity &amp; Leverage</h2>
-      <p style="font-size:12px;color:var(--gray-500);margin-bottom:10px">
-        <span class="tag tag-blue">Blue</span> Existing debt split &nbsp;
-        <span class="tag" style="background:#fff3cd;color:#856404">Orange</span> Overlay scenario &nbsp;
-        <button class="btn" style="padding:3px 10px;font-size:11px;float:right" onclick="if(chartA)chartA.resetZoom()">Reset Zoom</button>
-      </p>
-      <div class="chart-wrap"><canvas id="chart-a"></canvas></div>
-      <div class="overlay-controls">
-        <h3>Overlay Scenario — Debt Allocation</h3>
-        <div id="overlay-sliders"></div>
-        <div style="margin-top:8px;font-size:12px;color:var(--gray-500)">
-          Nearest matched scenario: <span id="overlay-match-label" style="font-weight:600;color:var(--navy)">—</span>
-        </div>
-        <div class="quick-btns" id="quick-btns"></div>
-      </div>
+  <div class="card">
+    <h2>Scenario Selection — Overlay Debt Allocation</h2>
+    <p style="font-size:12px;color:var(--gray-500);margin-bottom:10px">
+      Adjust sliders to define an alternative debt currency split. The nearest grid scenario is matched automatically.
+      You can also <strong>click any point on the Efficient Frontier</strong> chart to select that scenario directly.
+    </p>
+    <div id="overlay-sliders"></div>
+    <div style="margin-top:8px;font-size:12px;color:var(--gray-500)">
+      Nearest matched scenario: <span id="overlay-match-label" style="font-weight:600;color:var(--navy)">—</span>
     </div>
-    <div class="card">
-      <h2>Result B — Efficient Frontier</h2>
-      <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
-        <div style="font-size:12px;color:var(--gray-500)">Colour = dominant debt currency. Hover for allocation detail.</div>
-        <button class="btn" style="padding:3px 10px;font-size:11px;margin-left:auto" onclick="if(chartB)chartB.resetZoom()">Reset Zoom</button>
-      </div>
-      <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:12px;align-items:center">
-        <div class="form-group" style="flex-direction:row;align-items:center;gap:8px;margin:0">
-          <label style="white-space:nowrap;font-size:12px">Equity at Risk:</label>
-          <select id="ear-pct" onchange="renderChartB()" style="padding:4px 8px;font-size:12px;border:1px solid var(--gray-300);border-radius:4px">
-            <option value="90">90th pctile</option>
-            <option value="95">95th pctile</option>
-            <option value="99" selected>99th pctile</option>
-          </select>
-        </div>
-        <div class="form-group" style="flex-direction:row;align-items:center;gap:8px;margin:0">
-          <label style="white-space:nowrap;font-size:12px">Leverage at Risk:</label>
-          <select id="lar-pct" onchange="renderChartB()" style="padding:4px 8px;font-size:12px;border:1px solid var(--gray-300);border-radius:4px">
-            <option value="90">90th pctile</option>
-            <option value="95">95th pctile</option>
-            <option value="99" selected>99th pctile</option>
-          </select>
-        </div>
-      </div>
-      <div class="chart-wrap"><canvas id="chart-b"></canvas></div>
-      <div class="frontier-legend" id="frontier-legend"></div>
-    </div>
+    <div class="quick-btns" id="quick-btns"></div>
   </div>
-  <div class="card" style="margin-top:20px">
+  <div class="card">
     <h2>Debt Currency Split Comparison</h2>
     <div id="comparison-panel">
       <div class="comp-row">
@@ -446,6 +424,46 @@ def get_body():
         <div class="comp-bar-wrap"><div class="comp-bar" id="comp-bar-overlay"></div></div>
         <div class="comp-pct-list" id="comp-pct-overlay"></div>
       </div>
+    </div>
+  </div>
+  <div id="risk-stats-row" class="risk-stats-row"></div>
+  <div class="charts-2col">
+    <div class="card">
+      <h2>Result A — FX Impact on Equity &amp; Leverage</h2>
+      <p style="font-size:12px;color:var(--gray-500);margin-bottom:10px">
+        <span class="tag tag-blue">Blue</span> Existing debt split &nbsp;
+        <span class="tag" style="background:#fff3cd;color:#856404">Orange</span> Overlay scenario &nbsp;
+        Dashed lines show EaR / LaR thresholds.
+        <button class="btn" style="padding:3px 10px;font-size:11px;float:right" onclick="if(chartA)chartA.resetZoom()">Reset Zoom</button>
+      </p>
+      <div class="chart-wrap"><canvas id="chart-a"></canvas></div>
+    </div>
+    <div class="card">
+      <h2>Result B — Efficient Frontier</h2>
+      <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
+        <div style="font-size:12px;color:var(--gray-500)">Click a point to select that scenario as the overlay.</div>
+        <button class="btn" style="padding:3px 10px;font-size:11px;margin-left:auto" onclick="if(chartB)chartB.resetZoom()">Reset Zoom</button>
+      </div>
+      <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:12px;align-items:center">
+        <div class="form-group" style="flex-direction:row;align-items:center;gap:8px;margin:0">
+          <label style="white-space:nowrap;font-size:12px">Equity at Risk:</label>
+          <select id="ear-pct" onchange="renderChartB();renderChartA(S.overlayScIdx);renderRiskStats(S.overlayScIdx)" style="padding:4px 8px;font-size:12px;border:1px solid var(--gray-300);border-radius:4px">
+            <option value="90">90th pctile</option>
+            <option value="95">95th pctile</option>
+            <option value="99" selected>99th pctile</option>
+          </select>
+        </div>
+        <div class="form-group" style="flex-direction:row;align-items:center;gap:8px;margin:0">
+          <label style="white-space:nowrap;font-size:12px">Leverage at Risk:</label>
+          <select id="lar-pct" onchange="renderChartB();renderChartA(S.overlayScIdx);renderRiskStats(S.overlayScIdx)" style="padding:4px 8px;font-size:12px;border:1px solid var(--gray-300);border-radius:4px">
+            <option value="90">90th pctile</option>
+            <option value="95">95th pctile</option>
+            <option value="99" selected>99th pctile</option>
+          </select>
+        </div>
+      </div>
+      <div class="chart-wrap"><canvas id="chart-b"></canvas></div>
+      <div class="frontier-legend" id="frontier-legend"></div>
     </div>
   </div>
 </div>
@@ -497,7 +515,8 @@ const S = {
   fxPaths: null,    // [nSims][nForeign] stored after run
   naLocal: null, ebitdaLocal: null,
   naReporting: 0, ebitdaReporting: 0, baseEquity: 0,
-  spotArr: null, scenarios: null, allCcys: null
+  spotArr: null, scenarios: null, allCcys: null,
+  overlayScIdx: 0, _chartBPts: null
 };
 
 // ============================================================
@@ -1149,6 +1168,7 @@ function renderResults() {
   renderChartB();
   renderOverlayControls();
   renderComparisonPanel();
+  renderRiskStats(0);
 }
 
 // ---------- Chart A ----------
@@ -1178,6 +1198,17 @@ function renderChartA(overlayScIdx) {
 
   const baseLev = S.netDebt / S.ebitda;
   const b = S.chartBounds;
+
+  // Percentile fields for risk lines
+  const earPct   = parseInt(document.getElementById('ear-pct')?.value || '99');
+  const larPct   = parseInt(document.getElementById('lar-pct')?.value || '99');
+  const deField  = {99:'de_p1', 95:'de_p5', 90:'de_p10'}[earPct]  || 'de_p1';
+  const levField = {99:'lev_p99',95:'lev_p95',90:'lev_p90'}[larPct] || 'lev_p99';
+  const overlayR  = S.results[overlayScIdx] || S.results[0];
+  const ear_base    = base[deField]   || 0;   // negative number (loss)
+  const ear_overlay = overlayR[deField] || 0;
+  const lar_base    = base[levField]   || 0;
+  const lar_overlay = overlayR[levField] || 0;
 
   chartA = new Chart(canvas, {
     type: 'scatter',
@@ -1212,11 +1243,39 @@ function renderChartA(overlayScIdx) {
       afterDraw(chart) {
         const {ctx,chartArea:{left,right,top,bottom},scales:{x,y}} = chart;
         ctx.save();
-        ctx.strokeStyle='rgba(0,0,0,0.2)'; ctx.lineWidth=1; ctx.setLineDash([4,3]);
+
+        // Zero / base leverage grey reference lines
+        ctx.strokeStyle='rgba(0,0,0,0.15)'; ctx.lineWidth=1; ctx.setLineDash([4,3]);
         const x0=x.getPixelForValue(0);
         if(x0>=left&&x0<=right){ctx.beginPath();ctx.moveTo(x0,top);ctx.lineTo(x0,bottom);ctx.stroke();}
-        const y0=y.getPixelForValue(baseLev);
-        if(y0>=top&&y0<=bottom){ctx.beginPath();ctx.moveTo(left,y0);ctx.lineTo(right,y0);ctx.stroke();}
+        const yBase=y.getPixelForValue(baseLev);
+        if(yBase>=top&&yBase<=bottom){ctx.beginPath();ctx.moveTo(left,yBase);ctx.lineTo(right,yBase);ctx.stroke();}
+
+        function drawRiskLines(earVal, larVal, color) {
+          ctx.strokeStyle = color; ctx.lineWidth = 1.5; ctx.setLineDash([6,4]);
+          // EaR vertical line
+          const xE = x.getPixelForValue(earVal);
+          if(xE>=left&&xE<=right){
+            ctx.beginPath();ctx.moveTo(xE,top);ctx.lineTo(xE,bottom);ctx.stroke();
+            ctx.fillStyle=color; ctx.font='bold 10px sans-serif';
+            ctx.fillText('EaR',xE+3,top+12);
+          }
+          // LaR horizontal line
+          const yL = y.getPixelForValue(larVal);
+          if(yL>=top&&yL<=bottom){
+            ctx.beginPath();ctx.moveTo(left,yL);ctx.lineTo(right,yL);ctx.stroke();
+            ctx.fillStyle=color; ctx.font='bold 10px sans-serif';
+            ctx.fillText('LaR',right-28,yL-4);
+          }
+        }
+
+        // Existing (blue dashed)
+        drawRiskLines(ear_base, lar_base, 'rgba(43,108,176,0.75)');
+        // Overlay (orange dashed) — only if different scenario
+        if(overlayScIdx !== 0) {
+          drawRiskLines(ear_overlay, lar_overlay, 'rgba(221,107,32,0.75)');
+        }
+
         ctx.restore();
       }
     }]
@@ -1270,9 +1329,12 @@ function onOverlayMove(changedCcy, newVal) {
   });
   const nearest = findNearestScenario(S.overlayAlloc);
   const idx = S.scenarios.indexOf(nearest);
+  S.overlayScIdx = idx >= 0 ? idx : 0;
   updateOverlayMatchLabel(nearest);
-  renderChartA(idx >= 0 ? idx : 0);
+  renderChartA(S.overlayScIdx);
   renderComparisonPanel();
+  renderRiskStats(S.overlayScIdx);
+  updateChartBSelected(S.overlayScIdx);
   document.querySelectorAll('.quick-btn').forEach(b=>b.classList.remove('active'));
 }
 
@@ -1303,9 +1365,12 @@ function setOverlayAlloc(alloc, btn) {
   });
   const nearest = findNearestScenario(alloc);
   const idx = S.scenarios.indexOf(nearest);
+  S.overlayScIdx = idx >= 0 ? idx : 0;
   updateOverlayMatchLabel(nearest);
-  renderChartA(idx >= 0 ? idx : 0);
+  renderChartA(S.overlayScIdx);
   renderComparisonPanel();
+  renderRiskStats(S.overlayScIdx);
+  updateChartBSelected(S.overlayScIdx);
   document.querySelectorAll('.quick-btn').forEach(b=>b.classList.remove('active'));
   if(btn) btn.classList.add('active');
 }
@@ -1351,6 +1416,12 @@ function renderChartB() {
     }
   });
 
+  // Selected overlay point
+  S._chartBPts = { regularPts, specialPts };
+  const selR = S.results[S.overlayScIdx] || S.results[0];
+  const selX = -(selR[deField] || 0);
+  const selY = selR[levField] || 0;
+
   const canvas = document.getElementById('chart-b');
   if (chartB) chartB.destroy();
 
@@ -1369,14 +1440,30 @@ function renderChartB() {
         pointStyle: specialPts.map(p=>p.shape==='circle'?'circle':'triangle'),
         pointRadius: specialPts.map(p=>p.shape==='circle'?11:9),
         pointHoverRadius:14, borderWidth:3,
-        borderColor: specialPts.map(p=>p.shape==='circle'?'white':'#333') }
+        borderColor: specialPts.map(p=>p.shape==='circle'?'white':'#333') },
+      { label:'Selected',
+        data: [{x:selX, y:selY}],
+        backgroundColor: 'rgba(0,0,0,0)',
+        pointStyle: 'circle',
+        pointRadius: 14, pointHoverRadius: 16,
+        borderWidth: 3, borderColor: 'rgba(221,107,32,0.9)' }
     ]},
     options: {
       responsive:true, maintainAspectRatio:false,
+      onClick(event, elements) {
+        if (!elements.length) return;
+        const el = elements[0];
+        const dsIdx = el.datasetIndex;
+        if (dsIdx === 2) return; // ignore clicks on the selection ring itself
+        const pts = dsIdx === 0 ? S._chartBPts.regularPts : S._chartBPts.specialPts;
+        const p = pts[el.index];
+        if (p && p.alloc) setOverlayAlloc(p.alloc, null);
+      },
       plugins: {
         legend:{ display:false },
         tooltip:{ callbacks:{
           label:(ctx) => {
+            if (ctx.datasetIndex === 2) return 'Selected overlay scenario';
             const pts = ctx.datasetIndex===0 ? regularPts : specialPts;
             const p = pts[ctx.dataIndex];
             if(!p) return '';
@@ -1437,6 +1524,95 @@ function renderComparisonPanel() {
       `<span style="color:${CCY_COLORS[c]||'#888'};font-weight:700">${c} ${(alloc[c]||0).toFixed(0)}%</span>`
     ).join(' ');
   });
+}
+
+// ---------- Risk stats cards ----------
+function renderRiskStats(overlayScIdx) {
+  const el = document.getElementById('risk-stats-row');
+  if (!el || !S.results) return;
+  const earPct   = parseInt(document.getElementById('ear-pct')?.value || '99');
+  const larPct   = parseInt(document.getElementById('lar-pct')?.value || '99');
+  const deField  = {99:'de_p1', 95:'de_p5', 90:'de_p10'}[earPct]  || 'de_p1';
+  const levField = {99:'lev_p99',95:'lev_p95',90:'lev_p90'}[larPct] || 'lev_p99';
+  const baseR    = S.results[0];
+  const overlayR = S.results[overlayScIdx] || S.results[0];
+  const ear_base    = -(baseR[deField]   || 0);
+  const ear_overlay = -(overlayR[deField] || 0);
+  const lar_base    = baseR[levField]    || 0;
+  const lar_overlay = overlayR[levField] || 0;
+
+  function deltaArrow(delta, lowerIsBetter) {
+    if (Math.abs(delta) < 0.005) return '';
+    const better = lowerIsBetter ? delta < 0 : delta > 0;
+    const cls    = better ? 'better' : 'worse';
+    const arrow  = delta > 0 ? '▲' : '▼';
+    const abs    = Math.abs(delta);
+    const disp   = abs < 10 ? abs.toFixed(2) : abs.toFixed(1);
+    return `<span class="risk-arrow ${cls}">${arrow} ${disp}</span>`;
+  }
+
+  const earDelta = ear_overlay - ear_base;
+  const larDelta = lar_overlay - lar_base;
+  const deDelta  = overlayR.de_p50 - baseR.de_p50;
+  const levDelta = overlayR.lev_p50 - baseR.lev_p50;
+
+  el.innerHTML = `
+    <div class="risk-block">
+      <div class="risk-block-title">Equity at Risk (${earPct}th pctile loss)</div>
+      <div class="risk-row">
+        <span class="risk-label" style="color:var(--blue)">Existing</span>
+        <span class="risk-val">${S.reportingCcy} ${fmt(ear_base,1)}M</span>
+      </div>
+      <div class="risk-row">
+        <span class="risk-label" style="color:#dd6b20">Overlay</span>
+        <span class="risk-val">${S.reportingCcy} ${fmt(ear_overlay,1)}M ${deltaArrow(earDelta, true)}</span>
+      </div>
+    </div>
+    <div class="risk-block">
+      <div class="risk-block-title">Leverage at Risk (${larPct}th pctile)</div>
+      <div class="risk-row">
+        <span class="risk-label" style="color:var(--blue)">Existing</span>
+        <span class="risk-val">${fmt(lar_base,2)}x</span>
+      </div>
+      <div class="risk-row">
+        <span class="risk-label" style="color:#dd6b20">Overlay</span>
+        <span class="risk-val">${fmt(lar_overlay,2)}x ${deltaArrow(larDelta, true)}</span>
+      </div>
+    </div>
+    <div class="risk-block">
+      <div class="risk-block-title">Median ΔEquity</div>
+      <div class="risk-row">
+        <span class="risk-label" style="color:var(--blue)">Existing</span>
+        <span class="risk-val">${S.reportingCcy} ${fmt(baseR.de_p50,1)}M</span>
+      </div>
+      <div class="risk-row">
+        <span class="risk-label" style="color:#dd6b20">Overlay</span>
+        <span class="risk-val">${S.reportingCcy} ${fmt(overlayR.de_p50,1)}M ${deltaArrow(deDelta, false)}</span>
+      </div>
+    </div>
+    <div class="risk-block">
+      <div class="risk-block-title">Median Leverage</div>
+      <div class="risk-row">
+        <span class="risk-label" style="color:var(--blue)">Existing</span>
+        <span class="risk-val">${fmt(baseR.lev_p50,2)}x</span>
+      </div>
+      <div class="risk-row">
+        <span class="risk-label" style="color:#dd6b20">Overlay</span>
+        <span class="risk-val">${fmt(overlayR.lev_p50,2)}x ${deltaArrow(levDelta, true)}</span>
+      </div>
+    </div>`;
+}
+
+// ---------- Update Chart B selected marker (no full re-render) ----------
+function updateChartBSelected(overlayScIdx) {
+  if (!chartB || !S._chartBPts) return;
+  const earPct   = parseInt(document.getElementById('ear-pct')?.value || '99');
+  const larPct   = parseInt(document.getElementById('lar-pct')?.value || '99');
+  const deField  = {99:'de_p1', 95:'de_p5', 90:'de_p10'}[earPct]  || 'de_p1';
+  const levField = {99:'lev_p99',95:'lev_p95',90:'lev_p90'}[larPct] || 'lev_p99';
+  const r = S.results[overlayScIdx] || S.results[0];
+  chartB.data.datasets[2].data = [{x: -(r[deField]||0), y: r[levField]||0}];
+  chartB.update('none');
 }
 
 // ============================================================
