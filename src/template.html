@@ -195,9 +195,9 @@
 
 <div id="tab-results" class="tab-panel">
   <div class="card">
-    <h2>Scenario Selection — Overlay Debt Allocation</h2>
+    <h2>Trial Scenario — Debt Allocation</h2>
     <p style="font-size:12px;color:var(--gray-500);margin-bottom:10px">
-      Adjust sliders to define an alternative debt currency split. The nearest grid scenario is matched automatically.
+      Adjust sliders to define a trial debt currency split. The nearest grid scenario is matched automatically.
       You can also <strong>click any point on the Efficient Frontier</strong> chart to select that scenario directly.
     </p>
     <div id="overlay-sliders"></div>
@@ -215,7 +215,7 @@
         <div class="comp-pct-list" id="comp-pct-existing"></div>
       </div>
       <div class="comp-row" style="margin-top:10px">
-        <div class="comp-label">Overlay</div>
+        <div class="comp-label">Trial</div>
         <div class="comp-bar-wrap"><div class="comp-bar" id="comp-bar-overlay"></div></div>
         <div class="comp-pct-list" id="comp-pct-overlay"></div>
       </div>
@@ -226,8 +226,8 @@
     <div class="card">
       <h2>Result A — FX Impact on Equity &amp; Leverage</h2>
       <p style="font-size:12px;color:var(--gray-500);margin-bottom:10px">
-        <span class="tag tag-blue">Blue</span> Existing debt split &nbsp;
-        <span class="tag" style="background:#fff3cd;color:#856404">Orange</span> Overlay scenario &nbsp;
+        <span class="tag" style="background:#f0f0f0;color:#555">○</span> Existing Debt Split &nbsp;
+        <span class="tag" style="background:#1a1a1a;color:#fff">●</span> Trial Scenario &nbsp;
         Dashed lines show EaR / LaR thresholds.
         <button class="btn" id="reset-zoom-a" style="padding:3px 10px;font-size:11px;float:right">Reset Zoom</button>
       </p>
@@ -236,7 +236,7 @@
     <div class="card">
       <h2>Result B — Efficient Frontier</h2>
       <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
-        <div style="font-size:12px;color:var(--gray-500)">Click a point to select that scenario as the overlay.</div>
+        <div style="font-size:12px;color:var(--gray-500)">Click a point to select it as the Trial Scenario.</div>
         <button class="btn" id="reset-zoom-b" style="padding:3px 10px;font-size:11px;margin-left:auto">Reset Zoom</button>
       </div>
       <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:12px;align-items:center">

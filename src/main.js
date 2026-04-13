@@ -65,14 +65,17 @@ function hexToRgb(hex) {
   return {r,g,b};
 }
 function scenarioColor(debtAlloc, allCcys) {
-  const n = allCcys.length;
-  let domCcy = allCcys[0], domPct = 0;
-  allCcys.forEach(c => { if ((debtAlloc[c]||0) > domPct) { domPct = debtAlloc[c]||0; domCcy = c; } });
-  const sat = Math.max(0, (domPct/100 - 1/n) / (1 - 1/n));
+  const sorted = allCcys.map(c => ({ ccy: c, pct: debtAlloc[c] || 0 }))
+                        .sort((a, b) => b.pct - a.pct);
+  const domCcy = sorted[0].ccy;
+  const gap = sorted[0].pct - (sorted[1]?.pct || 0);  // 0 = tied, 100 = solo
+
+  // Lerp from white (gap=0) to full currency colour (gap=100)
+  const t = gap / 100;
   const base = hexToRgb(CCY_COLORS[domCcy] || '#888888');
-  const r = Math.round(base.r*sat + 255*(1-sat));
-  const g = Math.round(base.g*sat + 255*(1-sat));
-  const b = Math.round(base.b*sat + 255*(1-sat));
+  const r = Math.round(base.r * t + 255 * (1 - t));
+  const g = Math.round(base.g * t + 255 * (1 - t));
+  const b = Math.round(base.b * t + 255 * (1 - t));
   return `rgb(${r},${g},${b})`;
 }
 
@@ -805,9 +808,11 @@ function renderChartA(overlayScIdx) {
     type: 'scatter',
     data: { datasets: [
       { label:'Existing Debt Split', data:baseData,
-        backgroundColor:'rgba(49,130,206,0.22)', pointRadius:2, pointHoverRadius:4 },
-      { label:'Overlay Scenario', data:overlayData,
-        backgroundColor:'rgba(221,107,32,0.28)', pointRadius:2, pointHoverRadius:4 }
+        backgroundColor:'rgba(0,0,0,0)', borderColor:'rgba(120,120,120,0.55)',
+        borderWidth:1, pointRadius:2, pointHoverRadius:4 },
+      { label:'Trial Scenario', data:overlayData,
+        backgroundColor:'rgba(30,30,30,0.3)', borderColor:'rgba(30,30,30,0.65)',
+        borderWidth:1, pointRadius:2, pointHoverRadius:4 }
     ]},
     options: {
       responsive: true, maintainAspectRatio: false,
@@ -860,11 +865,11 @@ function renderChartA(overlayScIdx) {
           }
         }
 
-        // Existing (blue dashed)
-        drawRiskLines(ear_base, lar_base, 'rgba(43,108,176,0.75)');
-        // Overlay (orange dashed) — only if different scenario
+        // Existing (grey dashed)
+        drawRiskLines(ear_base, lar_base, 'rgba(100,100,100,0.7)');
+        // Trial (dark dashed) — only if different scenario
         if(overlayScIdx !== 0) {
-          drawRiskLines(ear_overlay, lar_overlay, 'rgba(221,107,32,0.75)');
+          drawRiskLines(ear_overlay, lar_overlay, 'rgba(20,20,20,0.75)');
         }
 
         ctx.restore();
@@ -1080,7 +1085,7 @@ function renderChartB() {
         legend:{ display:false },
         tooltip:{ callbacks:{
           label:(ctx) => {
-            if (ctx.datasetIndex === 2) return 'Selected overlay scenario';
+            if (ctx.datasetIndex === 2) return 'Selected trial scenario';
             const pts = ctx.datasetIndex===0 ? regularPts : specialPts;
             const p = pts[ctx.dataIndex];
             if(!p) return '';
@@ -1114,7 +1119,7 @@ function renderChartB() {
   leg.innerHTML = allCcys.map(c =>
     `<div class="legend-item"><div class="legend-dot" style="background:${CCY_COLORS[c]}"></div>${c}</div>`
   ).join('') +
-  `<div class="legend-item"><div class="legend-dot" style="background:#1a365d;border:2px solid white;box-shadow:0 0 0 2px #1a365d;border-radius:50%"></div>Existing split</div>` +
+  `<div class="legend-item"><div class="legend-dot" style="background:#1a365d;border:2px solid white;box-shadow:0 0 0 2px #1a365d;border-radius:50%"></div>Existing Debt Split</div>` +
   `<div class="legend-item"><span style="font-size:13px">&#9650;</span>&nbsp;100% single currency</div>`;
 }
 
@@ -1181,7 +1186,7 @@ function renderRiskStats(overlayScIdx) {
         <span class="risk-val">${S.reportingCcy} ${fmt(ear_base,1)}M</span>
       </div>
       <div class="risk-row">
-        <span class="risk-label" style="color:#dd6b20">Overlay</span>
+        <span class="risk-label" style="color:#1a1a1a">Trial</span>
         <span class="risk-val">${S.reportingCcy} ${fmt(ear_overlay,1)}M ${deltaArrow(earDelta, true)}</span>
       </div>
     </div>
@@ -1192,7 +1197,7 @@ function renderRiskStats(overlayScIdx) {
         <span class="risk-val">${fmt(lar_base,2)}x</span>
       </div>
       <div class="risk-row">
-        <span class="risk-label" style="color:#dd6b20">Overlay</span>
+        <span class="risk-label" style="color:#1a1a1a">Trial</span>
         <span class="risk-val">${fmt(lar_overlay,2)}x ${deltaArrow(larDelta, true)}</span>
       </div>
     </div>
@@ -1203,7 +1208,7 @@ function renderRiskStats(overlayScIdx) {
         <span class="risk-val">${S.reportingCcy} ${fmt(baseR.de_p50,1)}M</span>
       </div>
       <div class="risk-row">
-        <span class="risk-label" style="color:#dd6b20">Overlay</span>
+        <span class="risk-label" style="color:#1a1a1a">Trial</span>
         <span class="risk-val">${S.reportingCcy} ${fmt(overlayR.de_p50,1)}M ${deltaArrow(deDelta, false)}</span>
       </div>
     </div>
@@ -1214,7 +1219,7 @@ function renderRiskStats(overlayScIdx) {
         <span class="risk-val">${fmt(baseR.lev_p50,2)}x</span>
       </div>
       <div class="risk-row">
-        <span class="risk-label" style="color:#dd6b20">Overlay</span>
+        <span class="risk-label" style="color:#1a1a1a">Trial</span>
         <span class="risk-val">${fmt(overlayR.lev_p50,2)}x ${deltaArrow(levDelta, true)}</span>
       </div>
     </div>`;
