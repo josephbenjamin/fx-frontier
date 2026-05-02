@@ -6,6 +6,7 @@ Output: fx-frontier.html
 """
 
 import os
+import webbrowser
 
 SRC_DIR = os.path.join(os.path.dirname(__file__), 'src')
 
@@ -21,7 +22,7 @@ def main():
     with open(out, 'w', encoding='utf-8') as f:
         f.write(html)
     print(f"Generated {out}")
-    print(f"Open {out} in Chrome, Firefox, or Safari.")
+    webbrowser.open(f"file://{os.path.abspath(out)}")
 
 
 def generate_html():
